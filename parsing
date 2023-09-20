@@ -1,0 +1,84 @@
+from datetime import datetime
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+
+
+base_url = 'https://rosseti-lenenergo.ru/planned_work/'
+
+# Определяем сегодняшнюю дату и дату через неделю
+today = datetime.today().date()
+next_week = today + timedelta(days=6)
+
+data = []
+
+# Предел страницы, до которой выполнять парсинг
+max_page = 10
+
+
+page_number = 1
+while page_number <= max_page:
+    url = f'{base_url}?PAGEN_1={page_number}' 
+
+
+    response = requests.get(url)
+
+
+    if response.status_code != 200:
+        break  # Выход из цикла, если страницы больше нет или произошла ошибка
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    table = soup.find('table', {'class': 'tableous_facts funds'})
+    rows = table.find_all('tr')
+
+
+    for row in rows[1:]:  
+        cols = row.find_all('td')
+
+    
+        if len(cols) >= 8:
+            region = cols[0].get_text(strip=True)
+            admin_district = cols[1].get_text(strip=True)
+            settlement = cols[2].get_text(strip=True)
+            street = cols[3].get_text(strip=True)
+            date_start = cols[4].get_text(strip=True)
+            time_start = cols[5].get_text(strip=True)
+            date_end = cols[6].get_text(strip=True)
+            time_end = cols[7].get_text(strip=True)
+            filial = cols[8].get_text(strip=True)
+            res = cols[9].get_text(strip=True)
+            comment = cols[10].get_text(strip=True)
+
+            # Объединение даты и времени
+            start_datetime = datetime.strptime(f'{date_start} {time_start}', '%d-%m-%Y %H:%M')
+            end_datetime = datetime.strptime(f'{date_end} {time_end}', '%d-%m-%Y %H:%M')
+
+            
+            if today <= start_datetime.date() <= next_week:
+                data.append([
+                    region,
+                    admin_district,
+                    settlement,
+                    street,
+                    start_datetime,
+                    end_datetime,
+                    filial,
+                    res,
+                    comment
+                ])
+
+    page_number += 1
+
+
+df = pd.DataFrame(data, columns=[
+    'Регион РФ (область, край, город фед. значения, округ)',
+    'Административный район',
+    'Населённый пункт',
+    'Улица',
+    'Плановое время начала отключения электроснабжения',
+    'Плановое время восстановления отключения электроснабжения',
+    'Филиал',
+    'РЭС',
+    'Комментарий'
+])
