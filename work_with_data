@@ -48,4 +48,6 @@ for address in addresses:
 
 df1 = pd.DataFrame(results)
 
-df1.to_csv('Работа с данными.csv', index=False, encoding='utf-8')
+merged_df = df.merge(df1, on='Улица', how='left')
+
+merged_df.to_csv('Работа с данными.csv', index=False, encoding='utf-8')
