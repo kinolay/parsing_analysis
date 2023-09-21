@@ -1,0 +1,51 @@
+import requests
+import pandas as pd
+
+from parsing import df
+
+# Разбиение строки улица на отдельные адреса
+df['Улица'] = df['Улица'].str.split(', |; ')
+df = df.explode('Улица', ignore_index=True)
+
+api_key = 'введите свой api_key для авторизации'
+
+geocode_url = 'https://geocode.gate.petersburg.ru/parse/free'
+
+addresses = list(df['Улица'])
+
+# Функция для выполнения геокодирования и получения building_id
+def geocode_address(address):
+    headers = {
+        'accept': 'application/json',
+        'Authorization': f'Bearer {api_key}'
+    }
+
+    params = {
+        'street': address
+    }
+
+    response = requests.get(geocode_url, headers=headers, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        building_id = data.get('Building_ID')
+        return building_id
+    else:
+        print(f'Ошибка при геокодировании адреса {address}: {response.status_code}')
+        return None
+
+results = []
+
+# Геокодирование для каждого адреса
+for address in addresses:
+    building_id = geocode_address(address)
+    if building_id is not None:
+        results.append({
+            'Улица': address,
+            'building_id': building_id
+        })
+
+
+df1 = pd.DataFrame(results)
+
+df1.to_csv('Работа с данными.csv', index=False, encoding='utf-8')
